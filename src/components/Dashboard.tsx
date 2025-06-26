@@ -1,9 +1,10 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUp, ArrowDown, DollarSign } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrency } from '@/utils/formatters';
-import { getToday, getTodayTransactions } from '@/utils/dateUtils';
+import { getTodayTransactions } from '@/utils/dateUtils';
 import { Transaction } from '@/hooks/useTransactions';
+import { TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { WhatsAppConnection } from './WhatsAppConnection';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -11,150 +12,126 @@ interface DashboardProps {
 
 export const Dashboard = ({ transactions }: DashboardProps) => {
   const todayTransactions = getTodayTransactions(transactions);
+  const todayExpenses = todayTransactions.filter(t => t.type === 'gasto');
+  const todayIncome = todayTransactions.filter(t => t.type === 'lucro');
   
-  const todayExpenses = todayTransactions
-    .filter(t => t.type === 'gasto')
-    .reduce((sum, t) => sum + t.value, 0);
-    
-  const todayIncome = todayTransactions
-    .filter(t => t.type === 'lucro')
-    .reduce((sum, t) => sum + t.value, 0);
-    
-  const balance = todayIncome - todayExpenses;
+  const totalExpenses = todayExpenses.reduce((sum, t) => sum + t.value, 0);
+  const totalIncome = todayIncome.reduce((sum, t) => sum + t.value, 0);
+  const balance = totalIncome - totalExpenses;
 
-  const totalExpenses = transactions
-    .filter(t => t.type === 'gasto')
-    .reduce((sum, t) => sum + t.value, 0);
-    
-  const totalIncome = transactions
-    .filter(t => t.type === 'lucro')
-    .reduce((sum, t) => sum + t.value, 0);
+  const allExpenses = transactions.filter(t => t.type === 'gasto').reduce((sum, t) => sum + t.value, 0);
+  const allIncome = transactions.filter(t => t.type === 'lucro').reduce((sum, t) => sum + t.value, 0);
+  const totalBalance = allIncome - allExpenses;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Dashboard Financeiro</h2>
-        <p className="text-gray-600">Resumo de hoje - {getToday()}</p>
-      </div>
-
-      {/* Cards do dia */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2">
-              <ArrowDown className="h-4 w-4" />
-              Gastos Hoje
-            </CardTitle>
+      {/* WhatsApp Connection */}
+      <WhatsAppConnection />
+      
+      {/* Today's Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Gastos Hoje</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatCurrency(todayExpenses)}
+              {formatCurrency(totalExpenses)}
             </div>
-            <p className="text-xs text-red-500 mt-1">
-              {todayTransactions.filter(t => t.type === 'gasto').length} transações
+            <p className="text-xs text-muted-foreground">
+              {todayExpenses.length} transação(ões)
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
-              <ArrowUp className="h-4 w-4" />
-              Ganhos Hoje
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ganhos Hoje</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(todayIncome)}
+              {formatCurrency(totalIncome)}
             </div>
-            <p className="text-xs text-green-500 mt-1">
-              {todayTransactions.filter(t => t.type === 'lucro').length} transações
+            <p className="text-xs text-muted-foreground">
+              {todayIncome.length} transação(ões)
             </p>
           </CardContent>
         </Card>
 
-        <Card className={`border-blue-200 ${balance >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
-          <CardHeader className="pb-2">
-            <CardTitle className={`text-sm font-medium flex items-center gap-2 ${
-              balance >= 0 ? 'text-blue-700' : 'text-orange-700'
-            }`}>
-              <DollarSign className="h-4 w-4" />
-              Saldo Hoje
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Hoje</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${
-              balance >= 0 ? 'text-blue-600' : 'text-orange-600'
-            }`}>
+            <div className={`text-2xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {formatCurrency(balance)}
             </div>
-            <p className={`text-xs mt-1 ${
-              balance >= 0 ? 'text-blue-500' : 'text-orange-500'
-            }`}>
-              {balance >= 0 ? 'Positivo' : 'Negativo'}
+            <p className="text-xs text-muted-foreground">
+              {balance >= 0 ? 'Saldo positivo' : 'Saldo negativo'}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(totalBalance)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {transactions.length} transação(ões) total
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Resumo Total */}
+      {/* Recent Transactions */}
       <Card>
         <CardHeader>
-          <CardTitle>Resumo Geral</CardTitle>
+          <CardTitle>Transações Recentes</CardTitle>
+          <CardDescription>
+            Suas últimas movimentações financeiras
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Total de Gastos</p>
-              <p className="text-xl font-bold text-red-600">{formatCurrency(totalExpenses)}</p>
+          {transactions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Nenhuma transação encontrada.</p>
+              <p className="text-sm mt-2">Comece enviando uma mensagem no WhatsApp ou no simulador ao lado!</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Total de Ganhos</p>
-              <p className="text-xl font-bold text-green-600">{formatCurrency(totalIncome)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Últimas Transações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Últimas Transações</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {transactions.slice(0, 5).map((transaction) => (
-              <div key={transaction.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    transaction.type === 'gasto' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
-                  }`}>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {transactions.slice(0, 10).map((transaction) => (
+                <div key={transaction.id} className="flex justify-between items-center p-3 border rounded-lg">
+                  <div className="flex items-center gap-3">
                     {transaction.type === 'gasto' ? (
-                      <ArrowDown className="h-4 w-4" />
+                      <TrendingDown className="h-5 w-5 text-red-500" />
                     ) : (
-                      <ArrowUp className="h-4 w-4" />
+                      <TrendingUp className="h-5 w-5 text-green-500" />
                     )}
+                    <div>
+                      <p className="font-medium">{transaction.description}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(transaction.timestamp).toLocaleString('pt-BR')}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{transaction.description}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(transaction.timestamp).toLocaleString('pt-BR')}
-                    </p>
+                  <div className={`font-bold ${
+                    transaction.type === 'gasto' ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {transaction.type === 'gasto' ? '-' : '+'}
+                    {formatCurrency(transaction.value)}
                   </div>
                 </div>
-                <p className={`font-bold ${
-                  transaction.type === 'gasto' ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {transaction.type === 'gasto' ? '-' : '+'}{formatCurrency(transaction.value)}
-                </p>
-              </div>
-            ))}
-            {transactions.length === 0 && (
-              <p className="text-gray-500 text-center py-4">
-                Nenhuma transação registrada ainda
-              </p>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

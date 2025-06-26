@@ -8,7 +8,10 @@ export const processMessage = async (
   onAddTransaction: (transaction: Omit<Transaction, 'id' | 'user_phone'>) => void
 ): Promise<string> => {
   const lowerMessage = message.toLowerCase().trim();
-  console.log('Processando mensagem:', lowerMessage);
+  console.log('=== PROCESSANDO MENSAGEM ===');
+  console.log('Mensagem original:', message);
+  console.log('Mensagem em lowercase:', lowerMessage);
+  console.log('Total de transações:', transactions.length);
 
   // Palavras-chave para gastos
   const gastoKeywords = ['gastei', 'comprei', 'paguei'];
@@ -228,5 +231,6 @@ export const processMessage = async (
   }
 
   // Mensagem não reconhecida
+  console.log('Mensagem não reconhecida, retornando ajuda');
   return `🤖 Não entendi sua mensagem. Você pode usar:\n\n💸 GASTOS (use: gastei, comprei, paguei):\n• "gastei 20 com marmita"\n• "comprei uma pizza de 30"\n• "paguei 50 de gasolina"\n\n💰 GANHOS (use: ganhei, recebi, vendi, lucrei):\n• "ganhei 50 do freelance"\n• "recebi um pix de 40"\n• "vendi produto por 20"\n\n📊 RELATÓRIOS:\n• "gastos do dia"\n• "lucro do dia"\n• "saldo do dia"`;
 };
