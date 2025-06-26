@@ -69,7 +69,9 @@ export class EvolutionApiService {
       instanceName,
       token: this.apiKey,
       qrcode: true,
-      integration: 'WHATSAPP-BAILEYS'
+      integration: 'WHATSAPP-BAILEYS',
+      webhookEvents: ['MESSAGES_UPSERT'],
+      webhookByEvents: false
     };
 
     return this.makeRequest('/instance/create', 'POST', data);
@@ -77,7 +79,39 @@ export class EvolutionApiService {
 
   async getQRCode(instanceName: string): Promise<QRCodeResponse> {
     console.log('Getting QR code for instance:', instanceName);
-    return this.makeRequest(`/instance/connect/${instanceName}`);
+    
+    // Tentar múltiplas vezes para garantir que o QR Code seja gerado
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const response = await this.makeRequest(`/instance/connect/${instanceName}`);
+        
+        if (response.base64 && response.base64.length > 100) {
+          console.log('QR Code gerado com sucesso');
+          return response;
+        }
+        
+        console.log(`QR Code não pronto, tentativa ${attempts + 1}/${maxAttempts}`);
+        attempts++;
+        
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        console.error(`Erro na tentativa ${attempts + 1}:`, error);
+        attempts++;
+        
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    throw new Error('Não foi possível gerar o QR Code após várias tentativas');
   }
 
   async getInstanceStatus(instanceName: string): Promise<{ instance: { state: string } }> {
@@ -88,8 +122,11 @@ export class EvolutionApiService {
   async sendMessage(instanceName: string, number: string, message: string) {
     console.log('Sending message to:', number);
     
+    // Garantir que o número está no formato correto
+    const formattedNumber = number.replace(/\D/g, '');
+    
     const data = {
-      number,
+      number: `${formattedNumber}@s.whatsapp.net`,
       textMessage: {
         text: message
       }

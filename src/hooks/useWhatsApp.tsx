@@ -6,8 +6,9 @@ import { toast } from 'sonner';
 
 interface WhatsAppConnection {
   instanceName: string;
-  status: 'creating' | 'waiting_qr' | 'connected' | 'disconnected';
+  status: 'creating' | 'waiting_qr' | 'connected' | 'disconnected' | 'qr_expired';
   qrCode?: string;
+  qrAttempts: number;
 }
 
 export const useWhatsApp = () => {
@@ -19,6 +20,67 @@ export const useWhatsApp = () => {
     if (!user) return '';
     return `financial_${user.phone}_${Date.now()}`;
   }, [user]);
+
+  const generateQRCode = useCallback(async (instanceName: string, attempt: number = 1) => {
+    try {
+      console.log(`Gerando QR Code - Tentativa ${attempt} para instância:`, instanceName);
+      
+      // Aguardar um pouco antes de tentar obter o QR Code
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const qrResponse = await evolutionApi.getQRCode(instanceName);
+      
+      if (qrResponse.base64) {
+        setConnection(prev => prev ? {
+          ...prev,
+          status: 'waiting_qr',
+          qrCode: qrResponse.base64,
+          qrAttempts: attempt
+        } : null);
+        
+        // Configurar timeout para renovar QR Code (30 segundos)
+        setTimeout(() => {
+          setConnection(prev => {
+            if (prev && prev.status === 'waiting_qr' && prev.qrAttempts === attempt) {
+              return { ...prev, status: 'qr_expired' };
+            }
+            return prev;
+          });
+        }, 30000);
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Erro ao gerar QR Code:', error);
+      
+      // Tentar novamente até 3 vezes
+      if (attempt < 3) {
+        console.log(`Tentando novamente em 2 segundos... (${attempt + 1}/3)`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return generateQRCode(instanceName, attempt + 1);
+      }
+      
+      throw error;
+    }
+  }, []);
+
+  const refreshQRCode = useCallback(async () => {
+    if (!connection) return;
+    
+    try {
+      setLoading(true);
+      setConnection(prev => prev ? { ...prev, status: 'creating' } : null);
+      
+      await generateQRCode(connection.instanceName, connection.qrAttempts + 1);
+    } catch (error) {
+      console.error('Erro ao renovar QR Code:', error);
+      toast.error('Erro ao renovar QR Code. Tente reconectar.');
+    } finally {
+      setLoading(false);
+    }
+  }, [connection, generateQRCode]);
 
   const createConnection = useCallback(async () => {
     if (!user) {
@@ -34,23 +96,18 @@ export const useWhatsApp = () => {
       
       setConnection({
         instanceName,
-        status: 'creating'
+        status: 'creating',
+        qrAttempts: 0
       });
 
       // Criar instância
       await evolutionApi.createInstance(instanceName);
       
-      // Aguardar um pouco para a instância ser criada
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Aguardar criação da instância
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      // Obter QR Code
-      const qrResponse = await evolutionApi.getQRCode(instanceName);
-      
-      setConnection(prev => prev ? {
-        ...prev,
-        status: 'waiting_qr',
-        qrCode: qrResponse.base64
-      } : null);
+      // Gerar QR Code
+      await generateQRCode(instanceName);
 
       // Verificar status da conexão periodicamente
       const statusInterval = setInterval(async () => {
@@ -62,48 +119,41 @@ export const useWhatsApp = () => {
             setConnection(prev => prev ? { ...prev, status: 'connected' } : null);
             clearInterval(statusInterval);
             
-            // Enviar mensagem de boas-vindas
-            const welcomeMessage = `🤖 Olá! Sou seu controle financeiro pessoal!
+            // Enviar mensagem de boas-vindas imediatamente
+            const welcomeMessage = `👋 Olá! Você está conectado ao *Controle Financeiro Elite*.
 
-Agora você pode enviar seus gastos e ganhos diretamente pelo WhatsApp:
+Envie mensagens como:
+- "gastei 20 com lanche"
+- "ganhei 50 do pix"
+- "despesa do dia"
+- "lucro do dia"
 
-💸 GASTOS (use: gastei, comprei, paguei):
-• "gastei 20 com marmita"
-• "comprei uma pizza de 30"
-• "paguei 50 de gasolina"
+E eu vou organizar tudo pra você! 💰📊
 
-💰 GANHOS (use: ganhei, recebi, vendi, lucrei):
-• "ganhei 50 do freelance"  
-• "recebi um pix de 40"
-• "vendi produto por 20"
+✅ *Assistente já está ativo e pronto para receber seus comandos financeiros!*`;
 
-📊 RELATÓRIOS:
-• "gastos do dia"
-• "lucro do dia"
-• "saldo do dia"
-
-Estou aqui para ajudar você a controlar suas finanças! 🚀`;
-
-            // Aguardar um pouco antes de enviar a mensagem
+            // Enviar mensagem de boas-vindas após 2 segundos
             setTimeout(async () => {
               try {
                 await evolutionApi.sendMessage(instanceName, user.phone, welcomeMessage);
-                toast.success('WhatsApp conectado com sucesso!');
+                console.log('Mensagem de boas-vindas enviada com sucesso');
+                toast.success('WhatsApp conectado! Mensagem de boas-vindas enviada.');
               } catch (error) {
                 console.error('Erro ao enviar mensagem de boas-vindas:', error);
+                toast.success('WhatsApp conectado! (Erro ao enviar mensagem de boas-vindas)');
               }
-            }, 3000);
+            }, 2000);
           }
         } catch (error) {
           console.error('Erro ao verificar status:', error);
         }
-      }, 5000);
+      }, 3000);
 
       // Limpar interval depois de 5 minutos se não conectar
       setTimeout(() => {
         clearInterval(statusInterval);
         setConnection(prev => {
-          if (prev && prev.status === 'waiting_qr') {
+          if (prev && prev.status !== 'connected') {
             return { ...prev, status: 'disconnected' };
           }
           return prev;
@@ -117,7 +167,7 @@ Estou aqui para ajudar você a controlar suas finanças! 🚀`;
     } finally {
       setLoading(false);
     }
-  }, [user, generateInstanceName]);
+  }, [user, generateInstanceName, generateQRCode]);
 
   const disconnect = useCallback(async () => {
     if (!connection) return;
@@ -139,6 +189,7 @@ Estou aqui para ajudar você a controlar suas finanças! 🚀`;
     connection,
     loading,
     createConnection,
-    disconnect
+    disconnect,
+    refreshQRCode
   };
 };
