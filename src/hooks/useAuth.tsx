@@ -78,12 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Definir configuração de usuário para RLS
-      await supabase.rpc('set_config', {
-        parameter: 'app.current_user_phone',
-        value: phone
-      });
-      
       const userData = { phone };
       setUser(userData);
       localStorage.setItem('financial-user', JSON.stringify(userData));

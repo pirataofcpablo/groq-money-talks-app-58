@@ -24,12 +24,6 @@ export const useTransactions = () => {
     try {
       setLoading(true);
       
-      // Definir configuração de usuário para RLS
-      await supabase.rpc('set_config', {
-        parameter: 'app.current_user_phone',
-        value: user.phone
-      });
-      
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
@@ -64,12 +58,6 @@ export const useTransactions = () => {
     }
 
     try {
-      // Definir configuração de usuário para RLS
-      await supabase.rpc('set_config', {
-        parameter: 'app.current_user_phone',
-        value: user.phone
-      });
-      
       const newTransaction = {
         ...transaction,
         user_phone: user.phone
