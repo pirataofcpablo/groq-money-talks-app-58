@@ -42,7 +42,13 @@ export const useTransactions = () => {
         return;
       }
       
-      setTransactions(data || []);
+      // Garantir que os tipos estão corretos
+      const typedTransactions: Transaction[] = (data || []).map(item => ({
+        ...item,
+        type: item.type as 'gasto' | 'lucro'
+      }));
+      
+      setTransactions(typedTransactions);
     } catch (error) {
       console.error('Erro interno:', error);
       toast.error('Erro interno');
@@ -81,7 +87,13 @@ export const useTransactions = () => {
         return;
       }
 
-      setTransactions(prev => [data, ...prev]);
+      // Garantir que o tipo está correto
+      const typedTransaction: Transaction = {
+        ...data,
+        type: data.type as 'gasto' | 'lucro'
+      };
+
+      setTransactions(prev => [typedTransaction, ...prev]);
       toast.success('Transação salva com sucesso!');
     } catch (error) {
       console.error('Erro interno:', error);
