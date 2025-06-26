@@ -1,26 +1,18 @@
 
-import { useState, useEffect } from 'react';
-import { MessageProcessor } from '@/components/MessageProcessor';
+import { AuthForm } from '@/components/AuthForm';
 import { Dashboard } from '@/components/Dashboard';
 import { WhatsAppSimulator } from '@/components/WhatsAppSimulator';
 import { Header } from '@/components/Header';
+import { useAuth } from '@/hooks/useAuth';
+import { useTransactions } from '@/hooks/useTransactions';
 
 const Index = () => {
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const { user } = useAuth();
+  const { transactions, addTransaction } = useTransactions();
 
-  useEffect(() => {
-    // Caregar dados do localStorage
-    const savedTransactions = localStorage.getItem('financial-transactions');
-    if (savedTransactions) {
-      setTransactions(JSON.parse(savedTransactions));
-    }
-  }, []);
-
-  const addTransaction = (transaction: any) => {
-    const newTransactions = [...transactions, transaction];
-    setTransactions(newTransactions);
-    localStorage.setItem('financial-transactions', JSON.stringify(newTransactions));
-  };
+  if (!user) {
+    return <AuthForm />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
@@ -42,8 +34,6 @@ const Index = () => {
           </div>
         </div>
       </div>
-      
-      <MessageProcessor />
     </div>
   );
 };

@@ -9,12 +9,27 @@ export const processMessage = async (
 ): Promise<string> => {
   const lowerMessage = message.toLowerCase().trim();
 
-  // Processar registro de gasto
-  if (lowerMessage.includes('gastei')) {
-    const match = lowerMessage.match(/gastei\s+(\d+(?:,\d+)?)\s+(?:com|no|na|em)\s+(.+)/);
+  // Processar registro de gasto - expressões mais variadas
+  const gastoPatterns = [
+    /(?:gastei|comi|comprei|paguei)\s+(?:uma?|um)?\s*(?:\w+\s+)?(?:de\s+)?(\d+(?:,\d+)?)\s+(?:com|no|na|em|de|reais?\s+(?:com|no|na|em|de))\s+(.+)/i,
+    /(?:gastei|comi|comprei|paguei)\s+(\d+(?:,\d+)?)\s+(?:com|no|na|em|de|reais?\s+(?:com|no|na|em|de))\s+(.+)/i,
+    /(?:uma?|um)\s+(\w+)\s+de\s+(\d+(?:,\d+)?)/i
+  ];
+
+  for (const pattern of gastoPatterns) {
+    const match = lowerMessage.match(pattern);
     if (match) {
-      const value = parseFloat(match[1].replace(',', '.'));
-      const description = match[2].trim();
+      let value: number;
+      let description: string;
+      
+      if (pattern.source.includes('uma?|um')) {
+        // Padrão "uma marmita de 30"
+        description = match[1];
+        value = parseFloat(match[2].replace(',', '.'));
+      } else {
+        value = parseFloat(match[1].replace(',', '.'));
+        description = match[2].trim();
+      }
       
       const transaction = {
         id: Date.now().toString(),
@@ -22,21 +37,40 @@ export const processMessage = async (
         value,
         description,
         timestamp: new Date().toISOString(),
-        user_id: 'whatsapp_user'
+        user_phone: 'current_user'
       };
       
       onAddTransaction(transaction);
       return `✅ Registro de gasto confirmado!\n💸 Valor: ${formatCurrency(value)}\n📝 Descrição: ${description}`;
     }
-    return '❌ Não consegui entender o valor ou descrição do gasto. Use o formato: "gastei 20 com marmita"';
   }
 
-  // Processar registro de ganho
-  if (lowerMessage.includes('ganhei')) {
-    const match = lowerMessage.match(/ganhei\s+(\d+(?:,\d+)?)\s+(?:do|da|de|com)\s+(.+)/);
+  // Processar registro de ganho - expressões mais variadas
+  const lucroPatterns = [
+    /(?:ganhei|lucrei|recebi|vendi)\s+(?:um|uma)?\s*(?:\w+\s+)?(?:de\s+)?(\d+(?:,\d+)?)\s+(?:do|da|de|com|no|na|em|reais?\s+(?:do|da|de|com|no|na|em))\s+(.+)/i,
+    /(?:ganhei|lucrei|recebi|vendi)\s+(\d+(?:,\d+)?)\s+(?:do|da|de|com|no|na|em|reais?\s+(?:do|da|de|com|no|na|em))\s+(.+)/i,
+    /(?:lucrei|ganhei)\s+(?:com|no|na|em)\s+(?:o|a)?\s*(.+?)\s+(\d+(?:,\d+)?)/i,
+    /(?:recebi|ganhei)\s+(?:um|uma)\s+(?:pix|transferência|pagamento)\s+de\s+(\d+(?:,\d+)?)/i
+  ];
+
+  for (const pattern of lucroPatterns) {
+    const match = lowerMessage.match(pattern);
     if (match) {
-      const value = parseFloat(match[1].replace(',', '.'));
-      const description = match[2].trim();
+      let value: number;
+      let description: string;
+      
+      if (pattern.source.includes('(.+?)\\s+(\\d+')) {
+        // Padrão "lucrei com o sistema 30"
+        description = match[1].trim();
+        value = parseFloat(match[2].replace(',', '.'));
+      } else if (pattern.source.includes('pix|transferência')) {
+        // Padrão "recebi um pix de 40"
+        value = parseFloat(match[1].replace(',', '.'));
+        description = 'PIX/Transferência';
+      } else {
+        value = parseFloat(match[1].replace(',', '.'));
+        description = match[2].trim();
+      }
       
       const transaction = {
         id: Date.now().toString(),
@@ -44,17 +78,21 @@ export const processMessage = async (
         value,
         description,
         timestamp: new Date().toISOString(),
-        user_id: 'whatsapp_user'
+        user_phone: 'current_user'
       };
       
       onAddTransaction(transaction);
       return `✅ Registro de ganho confirmado!\n💰 Valor: ${formatCurrency(value)}\n📝 Fonte: ${description}`;
     }
-    return '❌ Não consegui entender o valor ou fonte do ganho. Use o formato: "ganhei 50 do freelance"';
   }
 
-  // Relatório de despesas do dia
-  if (lowerMessage.includes('despesa do dia') || lowerMessage.includes('gastos do dia')) {
+  // Relatório de despesas do dia - mais variações
+  if (lowerMessage.includes('despesa do dia') || 
+      lowerMessage.includes('gastos do dia') ||
+      lowerMessage.includes('meu gasto do dia') ||
+      lowerMessage.includes('gastei quanto') ||
+      lowerMessage.match(/\bgastos?\b/)) {
+    
     const todayTransactions = getTodayTransactions(transactions);
     const expenses = todayTransactions.filter(t => t.type === 'gasto');
     
@@ -73,8 +111,13 @@ export const processMessage = async (
     return report;
   }
 
-  // Relatório de lucros do dia
-  if (lowerMessage.includes('lucro do dia') || lowerMessage.includes('ganhos do dia')) {
+  // Relatório de lucros do dia - mais variações
+  if (lowerMessage.includes('lucro do dia') || 
+      lowerMessage.includes('ganhos do dia') ||
+      lowerMessage.includes('lucrei quanto') ||
+      lowerMessage.includes('faturamento') ||
+      lowerMessage.match(/\blucros?\b/)) {
+    
     const todayTransactions = getTodayTransactions(transactions);
     const income = todayTransactions.filter(t => t.type === 'lucro');
     
@@ -120,5 +163,5 @@ export const processMessage = async (
   }
 
   // Mensagem não reconhecida
-  return `🤖 Não entendi sua mensagem. Você pode usar:\n\n• "gastei 20 com marmita" - para registrar gastos\n• "ganhei 50 do freelance" - para registrar ganhos\n• "despesa do dia" - ver gastos de hoje\n• "lucro do dia" - ver ganhos de hoje\n• "saldo do dia" - resumo completo`;
+  return `🤖 Não entendi sua mensagem. Você pode usar:\n\n• Gastos: "gastei 20 com marmita", "comprei uma pizza de 30", "paguei 50 de gasolina"\n• Ganhos: "ganhei 50 do freelance", "recebi um pix de 40", "vendi um produto de 20"\n• Relatórios: "gastos do dia", "lucro do dia", "faturamento", "saldo do dia"`;
 };

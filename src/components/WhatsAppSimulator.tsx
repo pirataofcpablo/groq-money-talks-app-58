@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { processMessage } from '@/utils/messageProcessor';
 import { toast } from 'sonner';
+import { Transaction } from '@/hooks/useTransactions';
 
 interface Message {
   id: string;
@@ -15,15 +16,15 @@ interface Message {
 }
 
 interface WhatsAppSimulatorProps {
-  transactions: any[];
-  onAddTransaction: (transaction: any) => void;
+  transactions: Transaction[];
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'user_phone'>) => void;
 }
 
 export const WhatsAppSimulator = ({ transactions, onAddTransaction }: WhatsAppSimulatorProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Olá! Sou seu assistente financeiro. Envie mensagens como:\n• "gastei 20 com marmita"\n• "ganhei 50 do freelance"\n• "despesa do dia"\n• "lucro do dia"',
+      text: '🤖 Olá! Sou seu assistente financeiro. Envie mensagens como:\n\n💸 GASTOS:\n• "gastei 20 com marmita"\n• "comprei uma pizza de 30"\n• "paguei 50 de gasolina"\n\n💰 GANHOS:\n• "ganhei 50 do freelance"\n• "recebi um pix de 40"\n• "vendi um produto de 20"\n\n📊 RELATÓRIOS:\n• "gastos do dia"\n• "lucro do dia"\n• "faturamento"\n• "saldo do dia"',
       isUser: false,
       timestamp: new Date()
     }

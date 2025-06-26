@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowUp, ArrowDown, DollarSign } from 'lucide-react';
 import { formatCurrency } from '@/utils/formatters';
 import { getToday, getTodayTransactions } from '@/utils/dateUtils';
+import { Transaction } from '@/hooks/useTransactions';
 
 interface DashboardProps {
-  transactions: any[];
+  transactions: Transaction[];
 }
 
 export const Dashboard = ({ transactions }: DashboardProps) => {
@@ -122,7 +123,7 @@ export const Dashboard = ({ transactions }: DashboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {transactions.slice(-5).reverse().map((transaction) => (
+            {transactions.slice(0, 5).map((transaction) => (
               <div key={transaction.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-full ${
