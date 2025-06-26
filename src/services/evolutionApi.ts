@@ -70,7 +70,7 @@ export class EvolutionApiService {
       token: this.apiKey,
       qrcode: true,
       integration: 'WHATSAPP-BAILEYS',
-      webhookEvents: ['MESSAGES_UPSERT'],
+      webhookEvents: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE'],
       webhookByEvents: false
     };
 
@@ -80,38 +80,39 @@ export class EvolutionApiService {
   async getQRCode(instanceName: string): Promise<QRCodeResponse> {
     console.log('Getting QR code for instance:', instanceName);
     
-    // Tentar múltiplas vezes para garantir que o QR Code seja gerado
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (attempts < maxAttempts) {
-      try {
-        const response = await this.makeRequest(`/instance/connect/${instanceName}`);
-        
-        if (response.base64 && response.base64.length > 100) {
-          console.log('QR Code gerado com sucesso');
-          return response;
-        }
-        
-        console.log(`QR Code não pronto, tentativa ${attempts + 1}/${maxAttempts}`);
-        attempts++;
-        
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      } catch (error) {
-        console.error(`Erro na tentativa ${attempts + 1}:`, error);
-        attempts++;
-        
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        } else {
-          throw error;
-        }
+    try {
+      // Primeiro, conectar à instância
+      const connectResponse = await this.makeRequest(`/instance/connect/${instanceName}`, 'GET');
+      console.log('Connect response:', connectResponse);
+      
+      // Aguardar um pouco para a geração do QR Code
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Buscar o QR Code
+      const qrResponse = await this.makeRequest(`/instance/qrcode/${instanceName}`, 'GET');
+      console.log('QR Code response:', qrResponse);
+      
+      if (qrResponse.base64) {
+        return {
+          base64: qrResponse.base64,
+          code: qrResponse.code || 'QR_CODE_GENERATED'
+        };
       }
+      
+      // Se não tiver base64, tentar o endpoint de conexão
+      const fallbackResponse = await this.makeRequest(`/instance/connect/${instanceName}`, 'GET');
+      if (fallbackResponse.base64) {
+        return {
+          base64: fallbackResponse.base64,
+          code: fallbackResponse.code || 'QR_CODE_GENERATED'
+        };
+      }
+      
+      throw new Error('QR Code não foi gerado');
+    } catch (error) {
+      console.error('Erro ao obter QR Code:', error);
+      throw error;
     }
-    
-    throw new Error('Não foi possível gerar o QR Code após várias tentativas');
   }
 
   async getInstanceStatus(instanceName: string): Promise<{ instance: { state: string } }> {
@@ -141,7 +142,7 @@ export class EvolutionApiService {
     const data = {
       url: webhookUrl,
       webhook_by_events: false,
-      events: ['MESSAGES_UPSERT']
+      events: ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
     };
 
     return this.makeRequest(`/webhook/set/${instanceName}`, 'POST', data);
@@ -150,6 +151,11 @@ export class EvolutionApiService {
   async deleteInstance(instanceName: string) {
     console.log('Deleting instance:', instanceName);
     return this.makeRequest(`/instance/delete/${instanceName}`, 'DELETE');
+  }
+
+  async restartInstance(instanceName: string) {
+    console.log('Restarting instance:', instanceName);
+    return this.makeRequest(`/instance/restart/${instanceName}`, 'POST');
   }
 }
 
