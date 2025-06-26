@@ -1,11 +1,11 @@
-
 import { formatCurrency } from './formatters';
 import { getTodayTransactions, getToday } from './dateUtils';
+import { Transaction } from '@/hooks/useTransactions';
 
 export const processMessage = async (
   message: string, 
-  transactions: any[], 
-  onAddTransaction: (transaction: any) => void
+  transactions: Transaction[], 
+  onAddTransaction: (transaction: Omit<Transaction, 'id' | 'user_phone'>) => void
 ): Promise<string> => {
   const lowerMessage = message.toLowerCase().trim();
 
@@ -31,16 +31,15 @@ export const processMessage = async (
         description = match[2].trim();
       }
       
-      const transaction = {
-        id: Date.now().toString(),
+      const transaction: Omit<Transaction, 'id' | 'user_phone'> = {
         type: 'gasto',
         value,
         description,
-        timestamp: new Date().toISOString(),
-        user_phone: 'current_user'
+        timestamp: new Date().toISOString()
       };
       
-      onAddTransaction(transaction);
+      console.log('Processando gasto:', transaction);
+      await onAddTransaction(transaction);
       return `✅ Registro de gasto confirmado!\n💸 Valor: ${formatCurrency(value)}\n📝 Descrição: ${description}`;
     }
   }
@@ -72,16 +71,15 @@ export const processMessage = async (
         description = match[2].trim();
       }
       
-      const transaction = {
-        id: Date.now().toString(),
+      const transaction: Omit<Transaction, 'id' | 'user_phone'> = {
         type: 'lucro',
         value,
         description,
-        timestamp: new Date().toISOString(),
-        user_phone: 'current_user'
+        timestamp: new Date().toISOString()
       };
       
-      onAddTransaction(transaction);
+      console.log('Processando ganho:', transaction);
+      await onAddTransaction(transaction);
       return `✅ Registro de ganho confirmado!\n💰 Valor: ${formatCurrency(value)}\n📝 Fonte: ${description}`;
     }
   }

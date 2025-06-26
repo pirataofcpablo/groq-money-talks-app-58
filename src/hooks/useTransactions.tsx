@@ -23,6 +23,7 @@ export const useTransactions = () => {
     
     try {
       setLoading(true);
+      console.log('Carregando transações para o usuário:', user.phone);
       
       const { data, error } = await supabase
         .from('transactions')
@@ -35,6 +36,8 @@ export const useTransactions = () => {
         toast.error('Erro ao carregar transações');
         return;
       }
+      
+      console.log('Transações carregadas:', data);
       
       // Garantir que os tipos estão corretos e filtrar por usuário
       const typedTransactions: Transaction[] = (data || [])
@@ -55,15 +58,24 @@ export const useTransactions = () => {
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'user_phone'>) => {
     if (!user) {
+      console.error('Tentativa de adicionar transação sem usuário autenticado');
       toast.error('Usuário não autenticado');
       return;
     }
 
     try {
+      console.log('Adicionando transação:', transaction);
+      console.log('Usuário atual:', user.phone);
+
       const newTransaction = {
-        ...transaction,
+        type: transaction.type,
+        value: Number(transaction.value),
+        description: transaction.description,
+        timestamp: transaction.timestamp,
         user_phone: user.phone
       };
+
+      console.log('Dados para inserir no Supabase:', newTransaction);
 
       const { data, error } = await supabase
         .from('transactions')
@@ -72,13 +84,15 @@ export const useTransactions = () => {
         .single();
 
       if (error) {
-        console.error('Erro ao adicionar transação:', error);
-        toast.error('Erro ao salvar transação');
+        console.error('Erro do Supabase ao adicionar transação:', error);
+        toast.error('Erro ao salvar transação: ' + error.message);
         return;
       }
 
+      console.log('Transação salva com sucesso no Supabase:', data);
+
       // Garantir que o tipo está correto e que pertence ao usuário atual
-      if (data.user_phone === user.phone) {
+      if (data && data.user_phone === user.phone) {
         const typedTransaction: Transaction = {
           ...data,
           type: data.type as 'gasto' | 'lucro'
@@ -86,17 +100,22 @@ export const useTransactions = () => {
 
         setTransactions(prev => [typedTransaction, ...prev]);
         toast.success('Transação salva com sucesso!');
+      } else {
+        console.error('Dados retornados inválidos:', data);
+        toast.error('Erro: dados inválidos retornados');
       }
     } catch (error) {
-      console.error('Erro interno:', error);
-      toast.error('Erro interno');
+      console.error('Erro interno ao adicionar transação:', error);
+      toast.error('Erro interno: ' + (error as Error).message);
     }
   };
 
   useEffect(() => {
     if (user) {
+      console.log('Usuário autenticado, carregando transações...');
       loadTransactions();
     } else {
+      console.log('Usuário não autenticado, limpando transações');
       setTransactions([]);
     }
   }, [user]);
