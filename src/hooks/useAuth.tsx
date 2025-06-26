@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -34,6 +33,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       
+      // Verificar se o usuário já existe
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('phone')
+        .eq('phone', phone)
+        .maybeSingle();
+      
+      if (existingUser) {
+        toast.error('Este número já está cadastrado');
+        return false;
+      }
+      
       // Hash da senha (versão simples - em produção use bcrypt)
       const passwordHash = btoa(password);
       
@@ -42,17 +53,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .insert([{ phone, password_hash: passwordHash }]);
       
       if (error) {
-        if (error.code === '23505') {
-          toast.error('Este número já está cadastrado');
-        } else {
-          toast.error('Erro ao criar conta');
-        }
+        console.error('Erro ao criar conta:', error);
+        toast.error('Erro ao criar conta');
         return false;
       }
       
       toast.success('Conta criada com sucesso!');
       return true;
     } catch (error) {
+      console.error('Erro interno:', error);
       toast.error('Erro interno');
       return false;
     } finally {
@@ -85,6 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.success('Login realizado com sucesso!');
       return true;
     } catch (error) {
+      console.error('Erro interno:', error);
       toast.error('Erro interno');
       return false;
     } finally {
